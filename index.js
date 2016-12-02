@@ -1,6 +1,7 @@
 'use strict';
 const _postcss = require('postcss');
 const _autoprefixer = require('autoprefixer');
+const _htmlAutoprefixer = require('html-autoprefixer');
 
 var _DefaultSetting = {
   "regexp": "(\.css)$",
@@ -48,5 +49,38 @@ exports.registerPlugin = function(cli, options){
       })
       .catch((error)=>{cb(error);})
   }, 50)
+
+  //是否开启html，css autoprefixer, 不开启则不注册hook了
+  if(!_DefaultSetting.html){
+    return;
+  }
+
+  cli.registerHook('route:willResponse', (req, data, responseContent, cb)=>{
+    let pathname = data.realPath;
+    if(!/(\.html)$/.test(pathname)){
+      return cb(null,  responseContent)
+    }
+    //没有经过 hbs 编译, 纯html,不处理
+    if(data.status != 200 || !responseContent){
+      return cb(null, responseContent)
+    }
+
+    try{
+      cb(null, _htmlAutoprefixer.process(responseContent, setting))
+    }catch(e){
+      cb(e)
+    }
+  }, 1)
+
+  cli.registerHook('build:didCompile', (data, content, cb)=>{
+    if(!/(\.html)$/.test(data.outputFilePath) || !content){
+      return cb(null, data, content)
+    }
+    try{
+      cb(null, data, _htmlAutoprefixer.process(content, setting))
+    }catch(e){
+      cb(e)
+    }
+  }, 1)
 
 }
