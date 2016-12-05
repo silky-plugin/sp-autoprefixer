@@ -1,7 +1,8 @@
 'use strict';
 const _postcss = require('postcss');
 const _autoprefixer = require('autoprefixer');
-const _htmlAutoprefixer = require('html-autoprefixer');
+const _cheerio = require('cheerio');
+const _async = require('async');
 
 var _DefaultSetting = {
   "regexp": "(\.css)$",
@@ -12,6 +13,24 @@ var _DefaultSetting = {
 const isNeedCompile = (pathname)=>{
   let reg = new RegExp(_DefaultSetting.regexp)
   return reg.test(pathname.toLowerCase())
+}
+
+//autoprefixer html's css
+function autoPrefixerHtml(content, cleaner, finishAll){
+  let $ = _cheerio.load(content,  {decodeEntities: false})
+  _async.mapSeries($('style'), (item, next)=>{
+    let type = $(item).attr('type');
+    if(type && type !== 'text/css'){return next(null)}
+    cleaner.process($(item).text())
+      .then((result)=>{
+        result.warnings().forEach((warn)=>{console.warn(warn.toString())});
+        $(item).text(result.css);
+        next(null)
+      })
+      .catch((error)=>{next(error)})
+  }, (error)=>{
+    finishAll(error, $.html())
+  })
 }
 
 exports.registerPlugin = function(cli, options){
@@ -64,23 +83,18 @@ exports.registerPlugin = function(cli, options){
     if(data.status != 200 || !responseContent){
       return cb(null, responseContent)
     }
+    autoPrefixerHtml(responseContent, cleaner, cb)
 
-    try{
-      cb(null, _htmlAutoprefixer.process(responseContent, setting))
-    }catch(e){
-      cb(e)
-    }
   }, 1)
 
   cli.registerHook('build:didCompile', (data, content, cb)=>{
     if(!/(\.html)$/.test(data.outputFilePath) || !content){
       return cb(null, data, content)
     }
-    try{
-      cb(null, data, _htmlAutoprefixer.process(content, setting))
-    }catch(e){
-      cb(e)
-    }
+
+    autoPrefixerHtml(content, cleaner, (error, content)=>{
+      cb(error, data, content)
+    })
   }, 1)
 
 }
