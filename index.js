@@ -54,17 +54,17 @@ exports.registerPlugin = function(cli, options){
       .catch((error)=>{cb(error);})
   }, 1)
 
-  cli.registerHook('build:doCompile', (data, content, cb)=>{
+  cli.registerHook('build:doCompile', (buildConfig, data, content, cb)=>{
     let outputFilePath = data.outputFilePath;
     if(!/(\.css)$/.test(outputFilePath) || !content){
-      return cb(null, data, content)
+      return cb(null, content)
     }
     cleaner.process(content)
       .then((result)=>{
         result.warnings().forEach((warn)=>{
           cli.log.warn(warn.toString())
         });
-        cb(null, data, result.css)
+        cb(null, result.css)
       })
       .catch((error)=>{cb(error);})
   }, 50)
@@ -87,13 +87,13 @@ exports.registerPlugin = function(cli, options){
 
   }, 1)
 
-  cli.registerHook('build:didCompile', (data, content, cb)=>{
+  cli.registerHook('build:didCompile', (buildConfig, data, content, cb)=>{
     if(!/(\.html)$/.test(data.outputFilePath) || !content){
-      return cb(null, data, content)
+      return cb(null, content)
     }
 
     autoPrefixerHtml(content, cleaner, (error, content)=>{
-      cb(error, data, content)
+      cb(error, content)
     })
   }, 1)
 
