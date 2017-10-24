@@ -1,6 +1,7 @@
 'use strict';
 const _postcss = require('postcss');
 const _autoprefixer = require('autoprefixer');
+const _cheerio = require('cheerio');
 const _async = require('async');
 
 var _DefaultSetting = {
@@ -14,19 +15,22 @@ const isNeedCompile = (pathname)=>{
   return reg.test(pathname.toLowerCase())
 }
 
-let reg = /<style[^>]*>([\s\S]+?)<\/style>/gi
 //autoprefixer html's css
 function autoPrefixerHtml(content, cleaner, finishAll){
-  content = content.replace(reg,(line, match)=>{
-    //只编译type存在并且type类型为css的 和 纯style的
-    let typeMatch = line.match(/<style[^\>]+type\=['"]([^>'"]+)['"]>/)
-    if((typeMatch && typeMatch[1] == "text/css") ||line.match(/<style>/)){
-      let compileCss = cleaner.process(match).css
-      return line.replace(match, compileCss)
-    }
-    return line
+  let $ = _cheerio.load(content,  {decodeEntities: false})
+  _async.mapSeries($('style'), (item, next)=>{
+    let type = $(item).attr('type');
+    if(type && type !== 'text/css'){return next(null)}
+    cleaner.process($(item).text())
+      .then((result)=>{
+        result.warnings().forEach((warn)=>{console.warn(warn.toString())});
+        $(item).text(result.css);
+        next(null)
+      })
+      .catch((error)=>{next(error)})
+  }, (error)=>{
+    finishAll(error, $.html())
   })
-  finishAll(null, content)
 }
 
 exports.registerPlugin = function(cli, options){
@@ -84,10 +88,10 @@ exports.registerPlugin = function(cli, options){
   }, 1)
 
   cli.registerHook('build:didCompile', (buildConfig, data, content, cb)=>{
-    console.log(data.outputFilePath)
     if(!/(\.html)$/.test(data.outputFilePath) || !content){
       return cb(null, content)
     }
+
     autoPrefixerHtml(content, cleaner, (error, content)=>{
       cb(error, content)
     })
