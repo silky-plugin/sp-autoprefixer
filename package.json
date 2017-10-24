@@ -1,6 +1,6 @@
 {
   "name": "sp-autoprefixer",
-  "version": "1.0.4",
+  "version": "1.0.5-beta",
   "description": "",
   "main": "index.js",
   "author": "",
@@ -8,7 +8,6 @@
   "dependencies": {
     "async": "^2.1.4",
     "autoprefixer": "6.5.1",
-    "cheerio": "^0.22.0",
     "postcss": "5.2.5"
   }
 }
