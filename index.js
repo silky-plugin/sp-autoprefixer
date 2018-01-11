@@ -14,10 +14,9 @@ const isNeedCompile = (pathname)=>{
   return reg.test(pathname.toLowerCase())
 }
 
-let reg = /<style[^>]*>([\s\S]+?)<\/style>/gi
 //autoprefixer html's css
 function autoPrefixerHtml(content, cleaner, finishAll){
-  content = content.replace(reg,(line, match)=>{
+  content = content.replace(/<style[^>]*>([\s\S]+?)<\/style>/gi,(line, match)=>{
     //只编译type存在并且type类型为css的 和 纯style的
     let typeMatch = line.match(/<style[^\>]+type\=['"]([^>'"]+)['"]>/)
     if((typeMatch && typeMatch[1] == "text/css") ||line.match(/<style>/)){
