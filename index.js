@@ -69,7 +69,7 @@ exports.registerPlugin = function(cli, options){
     return;
   }
 
-  cli.registerHook('route:willResponse', (req, data, responseContent, cb)=>{
+  cli.registerHook(['route:willResponse', 'preview:beforeResponse'], (req, data, responseContent, cb)=>{
     let pathname = data.realPath;
     if(!/(\.html)$/.test(pathname)){
       return cb(null,  responseContent)
