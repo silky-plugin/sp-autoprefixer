@@ -83,7 +83,6 @@ exports.registerPlugin = function(cli, options){
   }, 1)
 
   cli.registerHook('build:didCompile', (buildConfig, data, content, cb)=>{
-    console.log(data.outputFilePath)
     if(!/(\.html)$/.test(data.outputFilePath) || !content){
       return cb(null, content)
     }
