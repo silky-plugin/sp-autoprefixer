@@ -14,9 +14,8 @@ const isNeedCompile = (pathname)=>{
   return reg.test(pathname.toLowerCase())
 }
 
-//autoprefixer html's css
-function autoPrefixerHtml(content, cleaner, finishAll){
-  content = content.replace(/<style[^>]*>([\s\S]+?)<\/style>/gi,(line, match)=>{
+function getAutoPrefixerHtml(content, cleaner){
+  return content.replace(/<style[^>]*>([\s\S]+?)<\/style>/gi,(line, match)=>{
     //只编译type存在并且type类型为css的 和 纯style的
     let typeMatch = line.match(/<style[^\>]+type\=['"]([^>'"]+)['"]>/)
     if((typeMatch && typeMatch[1] == "text/css") ||line.match(/<style>/)){
@@ -25,28 +24,27 @@ function autoPrefixerHtml(content, cleaner, finishAll){
     }
     return line
   })
-  finishAll(null, content)
 }
+
 
 exports.registerPlugin = function(cli, options){
   cli.utils.extend(_DefaultSetting, options)
   let setting = _DefaultSetting.options || {};
   let cleaner = _postcss([_autoprefixer(setting)])
-  cli.registerHook('route:willResponse', (req, data, responseContent, cb)=>{
+  //处理css
+  cli.registerHook('route:willResponse',async (req, data, responseContent)=>{
     if(!isNeedCompile(data.realPath)){
-      return cb(null, responseContent)
+      return responseContent
     }
     if(!responseContent){
-      return cb(null, responseContent)
+      return responseContent
     }
-    cleaner.process(responseContent)
-      .then((result)=>{
-        result.warnings().forEach((warn)=>{
-          console.warn(warn.toString())
-        });
-        cb(null, result.css)
-      })
-      .catch((error)=>{cb(error);})
+    return  cleaner.process(responseContent).then((result)=>{
+              result.warnings().forEach((warn)=>{
+                console.warn(warn.toString())
+              });
+              return result.css
+            })
   }, 1)
 
   cli.registerHook('build:doCompile', (buildConfig, data, content, cb)=>{
@@ -68,31 +66,28 @@ exports.registerPlugin = function(cli, options){
   if(!_DefaultSetting.html){
     return;
   }
-  
-  cli.registerHook(['precompile:replace'], (buildConfig, content, finish)=>{
-    autoPrefixerHtml(content, cleaner, finish)
+  //处理html
+  cli.registerHook(['precompile:replace'], async (buildConfig, content)=>{
+    return getAutoPrefixerHtml(content, cleaner)
   }, 1)
-
-  cli.registerHook(['route:willResponse'], (req, data, responseContent, cb)=>{
+  //处理html
+  cli.registerHook(['route:willResponse'], async (req, data, responseContent)=>{
     let pathname = data.realPath;
     if(!/(\.html)$/.test(pathname)){
-      return cb(null,  responseContent)
+      return responseContent
     }
     //没有经过 hbs 编译, 纯html,不处理
     if(data.status != 200 || !responseContent){
-      return cb(null, responseContent)
+      return responseContent
     }
-    autoPrefixerHtml(responseContent, cleaner, cb)
-
+    return getAutoPrefixerHtml(responseContent, cleaner)
   }, 1)
 
-  cli.registerHook('build:didCompile', (buildConfig, data, content, cb)=>{
+  cli.registerHook('build:didCompile', async (buildConfig, data, content)=>{
     if(!/(\.html)$/.test(data.outputFilePath) || !content){
-      return cb(null, content)
+      return content
     }
-    autoPrefixerHtml(content, cleaner, (error, content)=>{
-      cb(error, content)
-    })
+    return getAutoPrefixerHtml(content, cleaner)
   }, 1)
 
 }
