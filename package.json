@@ -1,12 +1,11 @@
 {
-  "name": "sp-autoprefixer",
-  "version": "1.0.6-preview-2",
+  "name": "srp-autoprefixer",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.1.4",
     "autoprefixer": "6.5.1",
     "postcss": "5.2.5"
   }

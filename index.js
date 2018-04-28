@@ -1,7 +1,6 @@
 'use strict';
 const _postcss = require('postcss');
 const _autoprefixer = require('autoprefixer');
-const _async = require('async');
 
 var _DefaultSetting = {
   "regexp": "(\.css)$",
@@ -26,40 +25,23 @@ function getAutoPrefixerHtml(content, cleaner){
   })
 }
 
-
 exports.registerPlugin = function(cli, options){
   cli.utils.extend(_DefaultSetting, options)
   let setting = _DefaultSetting.options || {};
   let cleaner = _postcss([_autoprefixer(setting)])
-  //处理css
-  cli.registerHook('route:willResponse',async (req, data, responseContent)=>{
-    if(!isNeedCompile(data.realPath)){
-      return responseContent
-    }
-    if(!responseContent){
-      return responseContent
-    }
-    return  cleaner.process(responseContent).then((result)=>{
-              result.warnings().forEach((warn)=>{
-                console.warn(warn.toString())
-              });
-              return result.css
-            })
-  }, 1)
 
-  cli.registerHook('build:doCompile', (buildConfig, data, content, cb)=>{
+  cli.registerHook('build:doCompile', async (buildConfig, data, content)=>{
     let outputFilePath = data.outputFilePath;
     if(!/(\.css)$/.test(outputFilePath) || !content){
-      return cb(null, content)
+      return content
     }
-    cleaner.process(content)
+    return cleaner.process(content)
       .then((result)=>{
         result.warnings().forEach((warn)=>{
           cli.log.warn(warn.toString())
         });
-        cb(null, result.css)
+        return result.css
       })
-      .catch((error)=>{cb(error);})
   }, 50)
 
   //是否开启html，css autoprefixer, 不开启则不注册hook了
@@ -69,18 +51,6 @@ exports.registerPlugin = function(cli, options){
   //处理html
   cli.registerHook(['precompile:replace'], async (buildConfig, content)=>{
     return getAutoPrefixerHtml(content, cleaner)
-  }, 1)
-  //处理html
-  cli.registerHook(['route:willResponse'], async (req, data, responseContent)=>{
-    let pathname = data.realPath;
-    if(!/(\.html)$/.test(pathname)){
-      return responseContent
-    }
-    //没有经过 hbs 编译, 纯html,不处理
-    if(data.status != 200 || !responseContent){
-      return responseContent
-    }
-    return getAutoPrefixerHtml(responseContent, cleaner)
   }, 1)
 
   cli.registerHook('build:didCompile', async (buildConfig, data, content)=>{
